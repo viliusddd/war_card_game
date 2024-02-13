@@ -1,5 +1,15 @@
+'''
+Usage: war_card_game.py [--names <name> <name>] [--peace]
+
+Options:
+  -h --help     Show this screen.
+  -n --names    Names of the players.
+  --peace       Peace mode (lowest card wins).
+'''
+
 import random
 import sys
+from docopt import docopt
 
 
 class Card:
@@ -71,11 +81,16 @@ def draw(p1: Player, p2: Player) -> None:
     print(f'{p1.name} cards: {p1.cards_left()}, {p2.name} cards: {p2.cards_left()}')
     print('-' * 50)
 
-
 def main() -> None:
+    args = docopt(__doc__)
+    
+    names = ["Player", "ClosedAI"]
+    if args["--names"]:
+        names = args["<name>"]
+    
     deck = Deck()
-
-    player, computer = Player('Player'), Player('ClosedAI')
+    
+    player, computer = Player(names[0]), Player(names[1])
     player.cards, computer.cards = deck.cards[::2], deck.cards[1::2]
 
     round = 1
