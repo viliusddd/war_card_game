@@ -64,32 +64,44 @@ class Player:
         return len(self.cards)
 
 
-def draw(p1: Player, p2: Player) -> None:
+def draw(p1: Player, p2: Player, peace: bool) -> None:
     c1, c2 = p1.draw_card(), p2.draw_card()
     print(f'{p1.name} "{c1[1]} {c1[0]}" vs {p2.name} "{c2[1]} {c2[0]}"')
 
-    if c1[0] > c2[0]:
-        p1.add_cards(c1)
-        p1.add_cards(c2)
-    elif c2[0] > c1[0]:
-        p2.add_cards(c2)
-        p2.add_cards(c1)
+    if peace:
+        if c1[0] < c2[0]:
+            p1.add_cards(c1)
+            p1.add_cards(c2)
+        elif c2[0] < c1[0]:
+            p2.add_cards(c2)
+            p2.add_cards(c1)
+        else:
+            print('Draw')
+            Player.pile.extend([c1] + [c2] + [p1.draw_card()] + [p2.draw_card()])
+
     else:
-        print('Draw')
-        Player.pile.extend([c1] + [c2] + [p1.draw_card()] + [p2.draw_card()])
+        if c1[0] > c2[0]:
+            p1.add_cards(c1)
+            p1.add_cards(c2)
+        elif c2[0] > c1[0]:
+            p2.add_cards(c2)
+            p2.add_cards(c1)
+        else:
+            print('Draw')
+            Player.pile.extend([c1] + [c2] + [p1.draw_card()] + [p2.draw_card()])
 
     print(f'{p1.name} cards: {p1.cards_left()}, {p2.name} cards: {p2.cards_left()}')
     print('-' * 50)
 
 def main() -> None:
     args = docopt(__doc__)
-    
+
     names = ["Player", "ClosedAI"]
     if args["--names"]:
         names = args["<name>"]
-    
+
     deck = Deck()
-    
+
     player, computer = Player(names[0]), Player(names[1])
     player.cards, computer.cards = deck.cards[::2], deck.cards[1::2]
 
@@ -97,7 +109,7 @@ def main() -> None:
     while player.cards and computer.cards:
         print(f'Round {round}:')
 
-        draw(player, computer)
+        draw(player, computer, args['--peace'])
 
         round += 1
 
