@@ -1,6 +1,9 @@
 '''
 Usage: war_card_game.py [--names <name> <name>] [--peace]
 
+Try:
+  war_card_game.py --names Tom Jerry
+
 Options:
   -h --help     Show this screen.
   -n --names    Names of the players.
@@ -9,19 +12,33 @@ Options:
 
 import random
 import sys
+
 from docopt import docopt
+from dataclasses import dataclass
 
 
+@dataclass
 class Card:
-    COLORS = ['spades', 'clubs', 'hearts', 'diamonds']
+    suit: str
+    value: int
+    rank: str = ''
 
-    def __init__(self, color, value) -> None:
-        self.card = (value, color)
+    def __post_init__(self):
+        ranks = {11: 'Jack', 12: 'Queen', 13: 'King', 1: 'Ace'}
+
+        if self.value in ranks:
+            self.rank = ranks[self.value]
+        else:
+            self.rank = str(self.value)
 
 
 class Deck:
+    SUITS = ['Spades', 'Clubs', 'Hearts', 'Diamonds']
+
     def __init__(self) -> None:
-        self.cards = [Card(color, value).card for value in range(1, 14) for color in Card.COLORS]
+        self.cards = [
+            Card(suit, value) for value in range(1, 14) for suit in Deck.SUITS
+        ]
         self.shuffle()
 
     def shuffle(self):
@@ -29,69 +46,70 @@ class Deck:
 
 
 class Player:
-    pile = []
+    pile: list[Card] = []
+
+    def add_to_pile(cls, *cards: Card):
+        for card in cards:
+            Player.pile.append(card)
 
     def __init__(self, name: str) -> None:
-        self.name = name
-        self.cards = []
-        self.pile = []
+        self.name: str = name
+        self.cards: list[Card]
 
-    def draw_card(self) -> tuple:
-        '''Take a card from the top of the deck.
-
-        Returns:
-            tuple: with card value and color, e.g. (4, 'spades')
+    def draw_card(self) -> Card:
+        '''
+        Draw single card from the top of the deck (end of list).
         '''
         if not self.cards:
             sys.exit(f'No more cards left for {self.name}. Oponent won')
 
         return self.cards.pop(0)
 
-    def add_cards(self, cards: list) -> None:
-        '''Add card to the bottom of the deck.
+    def take_pile(self) -> None:
+        print(f'{len(Player.pile)} cards taken from pile.')
+        self.cards = Player.pile + self.cards
+        Player.pile = []
 
-        Args:
-            cards (list): with card value and color, e.g. [(4, 'spades')]
+    def take_cards(self, *cards: Card) -> None:
         '''
-        self.cards.append(cards)
+        Add cards to the bottom of the deck.
+        '''
+        for card in cards:
+            self.cards.append(card)
 
         if Player.pile:
-            print(f'Cards left in pile: {len(Player.pile)}')
-            self.cards = Player.pile + self.cards
-            Player.pile = []
+            self.take_pile()
 
-    def cards_left(self):
+    def cards_left(self) -> int:
         return len(self.cards)
 
 
-def draw(p1: Player, p2: Player, peace: bool) -> None:
-    c1, c2 = p1.draw_card(), p2.draw_card()
-    print(f'{p1.name} "{c1[1]} {c1[0]}" vs {p2.name} "{c2[1]} {c2[0]}"')
+def draw(player1: Player, player2: Player, peace: bool) -> None:
+    card1, card2 = player1.draw_card(), player2.draw_card()
+    print(f'{player1.name} "{card1.suit} {card1.rank}" vs '
+          f'{player2.name} "{card2.suit} {card2.rank}"')
 
     if peace:
-        if c1[0] < c2[0]:
-            p1.add_cards(c1)
-            p1.add_cards(c2)
-        elif c2[0] < c1[0]:
-            p2.add_cards(c2)
-            p2.add_cards(c1)
+        if card1.value < card2.value:
+            player1.take_cards(card1, card2)
+        elif card2.value < card1.value:
+            player2.take_cards(card2, card1)
         else:
             print('Draw')
-            Player.pile.extend([c1] + [c2] + [p1.draw_card()] + [p2.draw_card()])
-
+            Player.add_to_pile(card1, card2, player1.draw_card(), player2.draw_card())
     else:
-        if c1[0] > c2[0]:
-            p1.add_cards(c1)
-            p1.add_cards(c2)
-        elif c2[0] > c1[0]:
-            p2.add_cards(c2)
-            p2.add_cards(c1)
+        if card1.value > card2.value:
+            player1.take_cards(card1, card2)
+        elif card2.value > card1.value:
+            player2.take_cards(card2, card1)
         else:
             print('Draw')
-            Player.pile.extend([c1] + [c2] + [p1.draw_card()] + [p2.draw_card()])
+            card3 = player1.draw_card()
+            card4 = player2.draw_card()
+            Player.add_to_pile(card1, card2, card3, card4)
 
-    print(f'{p1.name} cards: {p1.cards_left()}, {p2.name} cards: {p2.cards_left()}')
-    print('-' * 50)
+    print(f'{player1.name} cards: {player1.cards_left()}, {player2.name} cards: {player2.cards_left()}')
+
 
 def main() -> None:
     args = docopt(__doc__)
@@ -102,21 +120,21 @@ def main() -> None:
 
     deck = Deck()
 
-    player, computer = Player(names[0]), Player(names[1])
-    player.cards, computer.cards = deck.cards[::2], deck.cards[1::2]
+    player1, player2 = Player(names[0]), Player(names[1])
+    player1.cards, player2.cards = deck.cards[::2], deck.cards[1::2]
 
     round = 1
-    while player.cards and computer.cards:
-        print(f'Round {round}:')
+    while player1.cards and player2.cards:
+        print(f'{"-" * 50}\nRound {round}:')
 
-        draw(player, computer, args['--peace'])
+        draw(player1, player2, args['--peace'])
 
         round += 1
 
-        if not len(player.cards):
-            print(f'{computer.name} won.')
-        if not len(computer.cards):
-            print(f'{player.name} won.')
+        if not len(player1.cards):
+            print(f'{"-"*50}\n{player2.name} won.')
+        elif not len(player2.cards):
+            print(f'{"-"*50}\n{player1.name} won.')
 
 
 if __name__ == '__main__':
