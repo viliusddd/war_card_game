@@ -9,19 +9,29 @@ Options:
 
 import random
 import sys
+
+from dataclasses import dataclass
 from docopt import docopt
 
 
+@dataclass
 class Card:
-    COLORS = ['spades', 'clubs', 'hearts', 'diamonds']
+    suit: str
+    value: int
+    rank: str = ''
 
-    def __init__(self, color, value) -> None:
-        self.card = (value, color)
+    def __post_init__(self):
+        ranks = {11: 'Jack', 12: 'Queen', 13: 'King', 1: 'Ace'}
+
+        if self.rank in ranks:
+            self.rank = ranks[self.value]
 
 
 class Deck:
+    SUITS = ['spades', 'clubs', 'hearts', 'diamonds']
     def __init__(self) -> None:
-        self.cards = [Card(color, value).card for value in range(1, 14) for color in Card.COLORS]
+        self.cards: list[Card] = [Card(suit=color, value=value)for value
+                                  in range(1, 14) for color in Deck.SUITS]
         self.shuffle()
 
     def shuffle(self):
@@ -29,14 +39,13 @@ class Deck:
 
 
 class Player:
-    pile = []
+    pile: list[Card] = []
 
     def __init__(self, name: str) -> None:
-        self.name = name
-        self.cards = []
-        self.pile = []
+        self.name: str = name
+        self.cards: list[Card] = []
 
-    def draw_card(self) -> tuple:
+    def draw_card(self) -> Card:
         '''Take a card from the top of the deck.
 
         Returns:
@@ -47,60 +56,59 @@ class Player:
 
         return self.cards.pop(0)
 
-    def add_cards(self, cards: list) -> None:
+    def add_cards(self, card: Card) -> None:
         '''Add card to the bottom of the deck.
 
         Args:
             cards (list): with card value and color, e.g. [(4, 'spades')]
         '''
-        self.cards.append(cards)
+        self.cards.append(card)
 
         if Player.pile:
             print(f'Cards left in pile: {len(Player.pile)}')
             self.cards = Player.pile + self.cards
             Player.pile = []
 
-    def cards_left(self):
+    def cards_left(self) -> int:
         return len(self.cards)
 
 
 def draw(p1: Player, p2: Player, peace: bool) -> None:
-    c1, c2 = p1.draw_card(), p2.draw_card()
-    print(f'{p1.name} "{c1[1]} {c1[0]}" vs {p2.name} "{c2[1]} {c2[0]}"')
+    card1, card2 = p1.draw_card(), p2.draw_card()
+    print(f'{p1.name} "{card1.suit} {card1.value}" vs {p2.name} "{card2.suit} {card2.value}"')
 
     if peace:
-        if c1[0] < c2[0]:
-            p1.add_cards(c1)
-            p1.add_cards(c2)
-        elif c2[0] < c1[0]:
-            p2.add_cards(c2)
-            p2.add_cards(c1)
+        if card1.value < card2.value:
+            p1.add_cards(card1)
+            p1.add_cards(card2)
+        elif card2.value < card1.value:
+            p2.add_cards(card2)
+            p2.add_cards(card1)
         else:
             print('Draw')
-            Player.pile.extend([c1] + [c2] + [p1.draw_card()] + [p2.draw_card()])
-
+            Player.pile.extend([card1] + [card2] + [p1.draw_card()] + [p2.draw_card()])
     else:
-        if c1[0] > c2[0]:
-            p1.add_cards(c1)
-            p1.add_cards(c2)
-        elif c2[0] > c1[0]:
-            p2.add_cards(c2)
-            p2.add_cards(c1)
+        if card1.value > card2.value:
+            p1.add_cards(card1)
+            p1.add_cards(card2)
+        elif card2.value > card1.value:
+            p2.add_cards(card2)
+            p2.add_cards(card1)
         else:
             print('Draw')
-            Player.pile.extend([c1] + [c2] + [p1.draw_card()] + [p2.draw_card()])
+            Player.pile.extend([card1] + [card2] + [p1.draw_card()] + [p2.draw_card()])
 
     print(f'{p1.name} cards: {p1.cards_left()}, {p2.name} cards: {p2.cards_left()}')
     print('-' * 50)
 
 def main() -> None:
-    args = docopt(__doc__)
+    args: dict = docopt(__doc__)
 
-    names = ["Player", "ClosedAI"]
+    names: list[str] = ["Player", "ClosedAI"]
     if args["--names"]:
         names = args["<name>"]
 
-    deck = Deck()
+    deck: Deck = Deck()
 
     player, computer = Player(names[0]), Player(names[1])
     player.cards, computer.cards = deck.cards[::2], deck.cards[1::2]
