@@ -13,8 +13,8 @@ Options:
 import random
 import sys
 
-from docopt import docopt
 from dataclasses import dataclass
+from docopt import docopt
 
 
 @dataclass
@@ -104,21 +104,20 @@ def draw(player1: Player, player2: Player, peace: bool) -> None:
             player2.take_cards(card2, card1)
         else:
             print('Draw')
-            card3 = player1.draw_card()
-            card4 = player2.draw_card()
-            Player.add_to_pile(card1, card2, card3, card4)
+            Player.add_to_pile(card1, card2, player1.draw_card(), player2.draw_card())
 
-    print(f'{player1.name} cards: {player1.cards_left()}, {player2.name} cards: {player2.cards_left()}')
+    print(f'{player1.name} cards: {player1.cards_left()}, '
+          f'{player2.name} cards: {player2.cards_left()}')
 
 
 def main() -> None:
-    args = docopt(__doc__)
+    args: dict = docopt(__doc__)
 
-    names = ["Player", "ClosedAI"]
+    names: list[str] = ["Player", "ClosedAI"]
     if args["--names"]:
         names = args["<name>"]
 
-    deck = Deck()
+    deck: Deck = Deck()
 
     player1, player2 = Player(names[0]), Player(names[1])
     player1.cards, player2.cards = deck.cards[::2], deck.cards[1::2]
